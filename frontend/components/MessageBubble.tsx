@@ -46,7 +46,7 @@ function parseLine(line: string): React.ReactNode[] {
           // Bare URL
           const url = match[4]
           // Clean trailing punctuation
-          let cleanUrl = url.replace(/[.,;:!?]+$/, "")
+          const cleanUrl = url.replace(/[.,;:!?]+$/, "")
           elements.push(
             <a
               key={`u${i}-${match.index}`}

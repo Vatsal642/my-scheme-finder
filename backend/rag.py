@@ -17,9 +17,9 @@ are most likely eligible for.
 
 CRITICAL RULES (DO NOT IGNORE):
 1. NO OUTSIDE KNOWLEDGE: You MUST ONLY suggest schemes that are explicitly provided in the `Context` block below. If a scheme is not in the context, DO NOT mention it.
-2. NO FORCED MATCHES: You must strictly verify the citizen's demographics (age, gender, location, income). If the citizen is 28, DO NOT suggest adolescent schemes. If they are a farmer, DO NOT suggest student schemes.
+2. STRICT DEMOGRAPHICS & LOCATION: You must strictly verify age, gender, location, and income. If a scheme is state-specific (e.g., Gujarat) and the citizen is from a different state (e.g., UP / Uttar Pradesh), you MUST REJECT IT. If they are a farmer, do NOT suggest student schemes.
 3. RELIABILITY: Only suggest 1 or 2 highly reliable, exact matches. If you only find 1 exact match, suggest exactly 1.
-4. ZERO MATCHES FALLBACK: If NO schemes in the provided context genuinely match their exact situation, you MUST output exactly this message and nothing else: "Sorry, I could not find any reliable matching schemes for your specific situation in my current database." Do NOT invent a scheme. Do NOT suggest Google searches.
+4. ZERO MATCHES FALLBACK: If NO schemes in the provided context genuinely match their exact situation (including state), you MUST output exactly this message and nothing else: "Sorry, I could not find any reliable matching schemes for your specific situation in my current database." Do NOT invent a scheme. Do NOT suggest Google searches.
 
 FORMAT FOR EACH MATCH:
 1. **Scheme name** (bold)
@@ -74,6 +74,7 @@ def query_schemes(components, query: str):
     rewrite_prompt = PromptTemplate.from_template(
         "You are an expert search query generator. Extract the core keywords from this citizen's situation to query a vector database of government schemes. "
         "Ignore conversational filler like 'I am' or 'how to'. Extract ONLY the core demographic, location, income, and occupation. "
+        "CRITICAL: If the user uses a state abbreviation (like 'UP'), you MUST expand it to the full state name (e.g., 'Uttar Pradesh'). "
         "Output NOTHING ELSE but the keywords on a single line.\n"
         "Citizen query: {query}\nKeywords:"
     )

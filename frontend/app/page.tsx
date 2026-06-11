@@ -72,7 +72,8 @@ export default function Home() {
         sourceUrls: { ...schemeUrls, ...result.source_urls }
       }
       setMessages(prev => [...prev, botMsg])
-    } catch (err) {
+    } catch (e) {
+      console.error("Error asking agent:", e);
       const errorMsg: Message = {
         id: (Date.now() + 1).toString(),
         role: "bot",

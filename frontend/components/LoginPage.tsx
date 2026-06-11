@@ -77,8 +77,7 @@ export default function LoginPage() {
           </div>
           <h1 className="login-title">Scheme Finder</h1>
           <p className="login-subtitle">
-            AI-powered tool to discover Indian government schemes you're
-            eligible for
+            Discover thousands of government schemes tailored specifically to your profile. We&apos;ll match you with the support you deserve.
           </p>
         </div>
 
