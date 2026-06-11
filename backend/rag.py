@@ -1,7 +1,6 @@
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_groq import ChatGroq
-from langchain_classic.chains import RetrievalQA
 from langchain_core.prompts import PromptTemplate
 import os
 
@@ -60,40 +59,47 @@ def load_retriever():
         EMBEDDINGS_MODEL,
         allow_dangerous_deserialization=True
     )
-    return vectorstore.as_retriever(search_kwargs={"k": 8})
+    # Fetch top 15 to give the LLM a wider pool of relevant documents to choose from
+    return vectorstore.as_retriever(search_kwargs={"k": 15})
 
 def get_qa_chain(retriever):
-    prompt = PromptTemplate(
-        input_variables=["context", "question"],
-        template=SYSTEM_PROMPT
-    )
     llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0)
-    return RetrievalQA.from_chain_type(
-        llm=llm,
-        chain_type="stuff",
-        retriever=retriever,
-        return_source_documents=True,
-        chain_type_kwargs={"prompt": prompt}
-    )
+    # We return the raw components so we can orchestrate a multi-step LCEL pipeline in query_schemes
+    return (retriever, llm)
 
-def query_schemes(qa_chain, query: str):
-    result = qa_chain.invoke({"query": query})
-    answer = result["result"]
+def query_schemes(components, query: str):
+    retriever, llm = components
     
-    # Build a map of all retrieved scheme names to URLs
+    # Step 1: Query Expansion (Transform conversational query into clean keywords for FAISS)
+    rewrite_prompt = PromptTemplate.from_template(
+        "You are an expert search query generator. Extract the core keywords from this citizen's situation to query a vector database of government schemes. "
+        "Ignore conversational filler like 'I am' or 'how to'. Extract ONLY the core demographic, location, income, and occupation. "
+        "Output NOTHING ELSE but the keywords on a single line.\n"
+        "Citizen query: {query}\nKeywords:"
+    )
+    clean_query = (rewrite_prompt | llm).invoke({"query": query}).content.strip()
+    print(f"Original Query: {query} -> Expanded Query: {clean_query}")
+    
+    # Step 2: Fetch Documents
+    docs = retriever.invoke(clean_query)
+    
+    # Step 3: Generate Answer
+    context = "\n\n".join([f"Name: {d.metadata.get('name', 'Unknown')}\nDescription: {d.page_content}\nURL: {d.metadata.get('url', '')}" for d in docs])
+    qa_prompt = PromptTemplate.from_template(SYSTEM_PROMPT)
+    answer = (qa_prompt | llm).invoke({"context": context, "question": query}).content
+    
+    # Step 4: Map Source URLs
     all_urls = {
-        doc.metadata["name"]: doc.metadata["url"]
-        for doc in result["source_documents"]
+        d.metadata.get("name", "Unknown"): d.metadata.get("url", "")
+        for d in docs
     }
     
-    # Only include schemes the AI actually mentioned in the answer
     answer_lower = answer.lower()
     mentioned_sources = [
         name for name in all_urls.keys()
         if name.lower() in answer_lower
     ]
     
-    # Build filtered URL map
     mentioned_urls = {
         name: all_urls[name]
         for name in mentioned_sources
@@ -104,4 +110,3 @@ def query_schemes(qa_chain, query: str):
         "sources": mentioned_sources,
         "source_urls": mentioned_urls
     }
-
