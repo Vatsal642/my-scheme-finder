@@ -26,6 +26,12 @@ def import_csv(csv_path):
             if not name or name == 'Unknown Scheme':
                 continue
                 
+            slug = row_lower.get('slug', '').strip()
+            if slug:
+                scheme_url = f"https://www.myscheme.gov.in/schemes/{slug}"
+            else:
+                scheme_url = f"https://www.myscheme.gov.in/search?q={name.replace(' ', '+')}"
+                
             schemes.append({
                 "name": name,
                 "ministry": ministry,
@@ -36,7 +42,7 @@ def import_csv(csv_path):
                 "category": "General",
                 "target_group": "General",
                 "state": state,
-                "url": f"https://www.myscheme.gov.in/search?q={name.replace(' ', '+')}"
+                "url": scheme_url
             })
 
     print(f"✅ Successfully parsed {len(schemes)} schemes from CSV.")
